@@ -21,11 +21,12 @@ export default function UsersByProjectPage() {
   );
 
   // ================== Fetch data ==================
-  // ================== Fetch data ==================
   const fetchData = async (page = 1, pageSize = 8, search = "") => {
     setLoading(true);
     try {
       const user = JSON.parse(localStorage.getItem("user"));
+      console.log("=== FetchData START ===");
+      console.log("Mode:", mode, "| Page:", page, "| Limit:", pageSize, "| Search:", search);
 
       if (mode === "add" || mode === "edit") {
         const res = await EmployeeService.getAllUser(user?.access_token, {
@@ -34,15 +35,15 @@ export default function UsersByProjectPage() {
           search,
         });
 
+        console.log("Raw response (add/edit):", res);
+
         let userList = [];
         let totalCount = 0;
         let currentPage = page;
         let currentLimit = pageSize;
 
         if (Array.isArray(res)) {
-          // Không phân biệt role nữa
           userList = res;
-
           if (search) {
             const searchLower = search.toLowerCase();
             userList = userList.filter(u =>
@@ -50,25 +51,25 @@ export default function UsersByProjectPage() {
               u.email?.toLowerCase().includes(searchLower)
             );
           }
-
           totalCount = userList.length;
           userList = userList.slice((page - 1) * pageSize, page * pageSize);
         } else if (res?.success) {
-          // Không lọc roles
           userList = res.data || [];
           totalCount = res.total || userList.length;
           currentPage = res.page || page;
           currentLimit = res.limit || pageSize;
         }
 
+        console.log("Final userList (add/edit):", userList);
+
         setUsers(userList);
         setPagination({ total: totalCount, page: currentPage, pageSize: currentLimit });
 
-        // Xử lý selectedRowKeys cho mode edit (giữ nguyên)
+        // Giữ selectedRowKeys cho edit
         if (mode === "edit") {
           let initialSelectedIds = [];
-
           const tempFormData = localStorage.getItem("tempFormData");
+
           if (tempFormData) {
             try {
               const tempData = JSON.parse(tempFormData);
@@ -98,6 +99,7 @@ export default function UsersByProjectPage() {
                 id,
                 user?.access_token
               );
+              console.log("Response getUsersByProject (edit):", projectRes);
               if (projectRes?.success && projectRes.data) {
                 initialSelectedIds = projectRes.data.map((e) => e.id);
               }
@@ -106,6 +108,7 @@ export default function UsersByProjectPage() {
             }
           }
 
+          console.log("Initial selectedRowKeys (edit):", initialSelectedIds);
           setSelectedRowKeys(initialSelectedIds);
         }
       }
@@ -117,8 +120,12 @@ export default function UsersByProjectPage() {
           { page, limit: pageSize, search }
         );
 
+        console.log("Raw response (view):", res);
+
         if (res?.success) {
           setUsers(res.data || []);
+          console.log("Final userList (view):", res.data || []);
+
           setPagination({
             total: res.total || (res.data || []).length,
             page: res.page || page,
@@ -126,8 +133,10 @@ export default function UsersByProjectPage() {
           });
         }
       }
+
+      console.log("=== FetchData END ===");
     } catch (err) {
-      console.error(err);
+      console.error("FetchData error:", err);
       message.error("Có lỗi khi gọi API");
     } finally {
       setLoading(false);
@@ -138,132 +147,24 @@ export default function UsersByProjectPage() {
     fetchData(1, pagination.pageSize);
   }, [id, mode]);
 
-  // Thêm useEffect để sync với Redux khi selectedEmployees thay đổi từ bên ngoài
+  // Sync Redux
   useEffect(() => {
     if (mode === "edit" && selectedEmployees.length > 0) {
-      // FIX: Kiểm tra xem selectedEmployees là array of IDs hay array of objects
       let reduxSelectedIds = [];
-
-      if (typeof selectedEmployees[0] === 'string') {
-        // Nếu là array of strings (IDs)
+      if (typeof selectedEmployees[0] === "string") {
         reduxSelectedIds = selectedEmployees;
-      } else if (typeof selectedEmployees[0] === 'object' && selectedEmployees[0]?.id) {
-        // Nếu là array of objects
+      } else if (typeof selectedEmployees[0] === "object" && selectedEmployees[0]?.id) {
         reduxSelectedIds = selectedEmployees.map(e => e.id);
       }
-
-      console.log("=== Redux Sync Employees ===");
-      console.log("selectedEmployees type:", typeof selectedEmployees[0]);
-      console.log("reduxSelectedIds:", reduxSelectedIds);
-
+      console.log("Sync Redux selectedEmployees:", reduxSelectedIds);
       setSelectedRowKeys(reduxSelectedIds);
     }
   }, [selectedEmployees, mode]);
 
-  // ================== Confirm chọn nhân viên ==================
-  const handleConfirm = async () => {
-    try {
-      const user = JSON.parse(localStorage.getItem("user"));
-
-      // Lấy thông tin chi tiết của các nhân viên được chọn
-      const selectedDetails = await Promise.all(
-        selectedRowKeys.map(async (id) => {
-          const userInList = users.find(u => u.id === id);
-          if (userInList) {
-            return userInList;
-          }
-          // Nếu không có trong danh sách hiện tại, gọi API lấy chi tiết
-          try {
-            const res = await EmployeeService.getDetailsUser(id, user?.access_token);
-            return res?.data || res;
-          } catch (error) {
-            console.error("Error fetching user details:", error);
-            return null;
-          }
-        })
-      );
-
-      const validEmployees = selectedDetails.filter(Boolean).map(emp => ({ id: emp.id, name: emp.name, email: emp.email }));
-
-      // Cập nhật Redux
-      dispatch(setSelectedEmployees(validEmployees));
-
-      // Lấy tempFormData hiện tại
-      const existingTempData = JSON.parse(localStorage.getItem("tempFormData") || "{}");
-
-      const updatedTempData = {
-        ...existingTempData,
-        selectedEmployees: validEmployees,
-        selectedHouseholds: existingTempData.selectedHouseholds || [],
-        selectedLandPrices: existingTempData.selectedLandPrices || [],
-        formValues: existingTempData.formValues || {},
-        timestamp: Date.now(),
-        lastModified: "employees",
-      };
-
-      localStorage.setItem("tempFormData", JSON.stringify(updatedTempData));
-
-      // Cập nhật reopenModal
-      const reopenData = {
-        type: id === "new" ? "add" : "edit",
-        projectId: id === "new" ? "new" : id,
-        restoreData: {
-          formValues: updatedTempData.formValues,
-          selectedEmployees: updatedTempData.selectedEmployees,
-          selectedHouseholds: updatedTempData.selectedHouseholds,
-          selectedLandPrices: updatedTempData.selectedLandPrices,
-        },
-      };
-
-      localStorage.setItem("reopenModal", JSON.stringify(reopenData));
-
-      console.log("=== Updated Employee Data ===");
-      console.log("Selected Employees:", validEmployees);
-      console.log("TempFormData:", updatedTempData);
-
-      message.success("Đã chọn/cập nhật nhân viên thành công!");
-      navigate(-1);
-    } catch (err) {
-      console.error(err);
-      message.error("Có lỗi xảy ra!");
-    }
-  };
-
-  // ================== Cancel ==================
-  const handleCancel = () => {
-    const existingTempData = JSON.parse(localStorage.getItem("tempFormData") || "{}");
-
-    const reopenData = {
-      type: id === "new" ? "add" : "edit",
-      projectId: id === "new" ? "new" : id,
-      restoreData: {
-        formValues: existingTempData.formValues || {},
-        selectedEmployees: existingTempData.selectedEmployees || [],
-        selectedHouseholds: existingTempData.selectedHouseholds || [],
-        selectedLandPrices: existingTempData.selectedLandPrices || [],
-      },
-    };
-
-    localStorage.setItem("reopenModal", JSON.stringify(reopenData));
-    navigate(-1);
-  };
-
-  const handleBackView = () => {
-    localStorage.setItem(
-      "reopenModal",
-      JSON.stringify({ type: "view", projectId: id })
-    );
-    navigate(-1);
-  };
-
-  const handleSearch = () => {
-    fetchData(1, pagination.pageSize, searchKeyword);
-  };
-
   // ================== Columns ==================
   const columns = [
     { title: "Email", dataIndex: "email", key: "email" },
-    { title: "Tên", dataIndex: "name", key: "name" },
+    { title: "Tên nhân viên", dataIndex: "name", key: "name" },
     {
       title: "Vai trò",
       dataIndex: "roles",
@@ -281,27 +182,20 @@ export default function UsersByProjectPage() {
     }
   ];
 
-  // ===== DEBUG: Log để tracking =====
+  // Debug state
   useEffect(() => {
     console.log("=== UsersByProjectPage State ===");
-    console.log("Selected Row Keys:", selectedRowKeys);
-    console.log("Redux selectedEmployees:", selectedEmployees);
     console.log("Users length:", users.length);
+    console.log("Users:", users);
+    console.log("SelectedRowKeys:", selectedRowKeys);
+    console.log("Redux selectedEmployees:", selectedEmployees);
     console.log("Mode:", mode);
-    console.log("TempFormData:", localStorage.getItem("tempFormData"));
-  }, [selectedRowKeys, selectedEmployees, users, mode]);
+  }, [users, selectedRowKeys, selectedEmployees, mode]);
 
   return (
     <Card
-      title={`Danh sách Nhân viên trong dự án (${mode === "view" ? "Xem" : mode === "add" ? "Thêm" : "Sửa"})`}
+      title={`Danh sách Nhân viên (${mode})`}
       style={{ margin: 24 }}
-      extra={
-        (mode === "add" || mode === "edit") && (
-          <div style={{ fontSize: "14px", color: "#666" }}>
-            Đã chọn: {selectedRowKeys.length} nhân viên
-          </div>
-        )
-      }
     >
       <Spin spinning={loading}>
         <Input
@@ -311,10 +205,9 @@ export default function UsersByProjectPage() {
           onPressEnter={() => fetchData(1, pagination.pageSize, searchKeyword)}
           style={{ width: 300, height: 40, marginBottom: 16 }}
         />
-
         <Table
           dataSource={users}
-          rowKey="id"
+          rowKey={(record) => record.id || record._id} // ✅ an toàn hơn
           size="small"
           rowSelection={
             mode === "add" || mode === "edit"
@@ -334,23 +227,6 @@ export default function UsersByProjectPage() {
           }}
           columns={columns}
         />
-
-        {(mode === "add" || mode === "edit") && (
-          <div style={{ marginTop: 16, textAlign: "right" }}>
-            <Button style={{ marginRight: 8 }} onClick={handleCancel}>
-              Hủy
-            </Button>
-            <Button type="primary" onClick={handleConfirm} disabled={!selectedRowKeys.length}>
-              {mode === "add" ? "Xác nhận chọn" : "Cập nhật"} ({selectedRowKeys.length} nhân viên)
-            </Button>
-          </div>
-        )}
-
-        {mode === "view" && (
-          <div style={{ marginTop: 16, textAlign: "right" }}>
-            <Button onClick={handleBackView}>Quay lại</Button>
-          </div>
-        )}
       </Spin>
     </Card>
   );

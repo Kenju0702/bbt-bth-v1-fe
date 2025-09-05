@@ -19,7 +19,20 @@ const Header = () => {
     hour: "2-digit",
     minute: "2-digit",
   }).format(time)
-
+  const pathMap = {
+    system: "Hệ thống",
+    report:"Thống kê",
+    admin: "Quản trị",
+    lands: "Quản lý đất đai",
+    project: "Dự án",
+    employees: "Nhân viên",
+    households: "Hộ dân trong dự án",
+    citizens:"Hộ dân",
+    new: "Thêm mới",
+    add: "Thêm",
+    edit: "Chỉnh sửa",
+    detail: "Chi tiết",
+  };
   // ⏰ Cập nhật giờ realtime
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000)
@@ -51,13 +64,14 @@ const Header = () => {
   }, [])
 
   // 📍 Tạo breadcrumb từ path
+  // 📍 Tạo breadcrumb từ path
   const buildBreadcrumb = (pathname) => {
-    const parts = pathname.split("/").filter(Boolean)
+    const parts = pathname.split("/").filter(Boolean);
     return parts.map((p, i) => ({
-      name: p.charAt(0).toUpperCase() + p.slice(1),
-      path: "/" + parts.slice(0, i + 1).join("/")
-    }))
-  }
+      name: pathMap[p] || (p.charAt(0).toUpperCase() + p.slice(1)), // dịch sang VI nếu có
+      path: "/" + parts.slice(0, i + 1).join("/"),
+    }));
+  };
   const breadcrumbs = buildBreadcrumb(location.pathname)
 
   return (
