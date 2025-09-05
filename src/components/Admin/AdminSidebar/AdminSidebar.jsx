@@ -116,7 +116,7 @@ const Sidebar = () => {
     >
       {/* Logo & Title */}
       <div className="flex flex-col items-center p-4">
-        <Link to="/" className="flex flex-col items-center">
+        <Link to="/system/admin" className="flex flex-col items-center">
           <img
             src="https://qlvb.tphcm.gov.vn/qlvbdh/login/img/logo-header.png"
             alt="Logo"
