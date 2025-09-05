@@ -40,6 +40,7 @@ import { uploadFile } from "../../../services/FileService";
 import { FiMoreVertical } from "react-icons/fi";
 
 export default function ProjectPage() {
+  const location = useLocation();
   const [projects, setProjects] = useState([]);
   const [filteredProjects, setFilteredProjects] = useState([]);
   const [searchKeyword, setSearchKeyword] = useState("");
@@ -129,7 +130,6 @@ export default function ProjectPage() {
             ? dayjs.unix(proj.updatedAt._seconds).format("YYYY-MM-DD HH:mm:ss")
             : "",
         })) || [];
-
       setProjects(list);
       setFilteredProjects(list);
     } catch (err) {
@@ -710,8 +710,8 @@ export default function ProjectPage() {
   useEffect(() => {
     const keyword = searchKeyword.toLowerCase();
     setFilteredProjects(projects.filter(p =>
-      p.name.toLowerCase().includes(keyword) ||
-      p.project_code.toLowerCase().includes(keyword)
+      p.name?.toLowerCase().includes(keyword) ||
+      p.project_code?.toLowerCase().includes(keyword)
     ));
   }, [searchKeyword, projects]);
 
@@ -741,7 +741,7 @@ export default function ProjectPage() {
           <Table
             columns={columns}
             dataSource={filteredProjects}
-            pagination={{ pageSize: 5 }}
+            pagination={{ pageSize: 8 }}
             size="small"
             bordered
             rowKey="key"

@@ -7,7 +7,7 @@ export default function Footer() {
     <footer className="border-t bg-gray-50">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="py-3 text-center text-sm text-gray-500">
-          © {year} UBND Quận Bình Thạnh. Giữ mọi quyền.
+          © {year} Ban Bồi thương, giải phóng mặt bằng Quận Bình Thạnh. Giữ mọi quyền.
         </div>
       </div>
     </footer>
