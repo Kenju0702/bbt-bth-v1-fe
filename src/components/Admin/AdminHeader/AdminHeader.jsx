@@ -30,6 +30,7 @@ const Header = () => {
     citizens:"Hộ dân",
     new: "Thêm mới",
     add: "Thêm",
+    view:"Xem"
     edit: "Chỉnh sửa",
     detail: "Chi tiết",
   };
